@@ -57,7 +57,7 @@ app.post("/todos", (req, res) => {
   );
 });
 
-// Post: single Docoumnent/Record
+// Post: Multiple Docoumnent/Record
 app.post("/todos-many", (req, res) => {
   // res.send(req.body.data);
 
@@ -90,6 +90,7 @@ app.post("/todos-many", (req, res) => {
 // create Endpoints: GET/
 app.get("/", (req, res) => {
     let welcomeMsg = '<h1>Hello World</h1><h2>This is todo-api</h2>';
+    res.status(200).send(welcomeMsg);
 });
 
 app.get("/todos", (req, res) => {
