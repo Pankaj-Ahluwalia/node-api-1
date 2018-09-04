@@ -6,6 +6,12 @@
  * 
  */
 
+var _ = require('lodash');
+
+
+require('./config/config');
+
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const { ObjectId } = require("mongodb");
@@ -13,6 +19,9 @@ const { ObjectId } = require("mongodb");
 const { mongoose } = require("./db/mongoose");
 const { Todo } = require("./models/todo");
 const { User } = require("./models/user");
+
+const{authenticate} = require('./middleware/authenticate');
+
 
 // set port to handle dynmic port setup by Heroku
 const port = process.env.PORT || 3000;
@@ -25,15 +34,13 @@ app.use(bodyParser.json()); // ??????????????????Why, what for?
 // Private Functions area:
 let ValidateUserId = (req, res) => {
   const paramID = req.params.id;
-  const blnInvalidID = !ObjectId.isValid(paramID);
-
-  if (blnInvalidID) {
-    paramID = null;
+   if ( !ObjectId.isValid(paramID)) {
     res.status(404).send();
+   }
+   return paramID;
   }
-
-  return paramID;
-};
+  
+ 
 
 // create Endpoints: POST
 
@@ -88,14 +95,15 @@ app.post("/todos-many", (req, res) => {
 
 
 // create Endpoints: GET/
+
+
 app.get("/", (req, res) => {
     let welcomeMsg = '<h1>Hello World</h1><h2>This is todo-api</h2>';
     res.status(200).send(welcomeMsg);
 });
 
 app.get("/todos", (req, res) => {
-  Todo.find().then(
-    todos => {
+  Todo.find().then(todos => {
       res.send(todos); //Sucesss:return objects fund to client
     },
     e => {
@@ -105,17 +113,10 @@ app.get("/todos", (req, res) => {
 });
 
 app.get("/todos/:id", (req, res) => {
-  // const paramID = req.params.id;
-  // const blnInvalidID = !ObjectId.isValid(paramID);
+  
+  const paramID  = ValidateUserId(req, res);
 
-  // // validate ID: UDF
-  // if (blnInvalidID){
-  //     res.status(404).send();
-  // }
-
-  const paramID = ValidateUserId(req, res);
-
-  // find by id
+  // // find by id
   Todo.findById(paramID)
     .then(todo => {
       if (!todo) res.status(404).send("Record not found...");
@@ -127,18 +128,105 @@ app.get("/todos/:id", (req, res) => {
     });
 });
 
-app.delete("/todo/:id", (req, res) => {
+
+// create Endpoints: DELETE/
+app.delete("/todos/:id", (req, res) => {
   //validate userId
   const paramID = ValidateUserId(req, res);
 
-  Todo.findByIdAndRemove(paramID).then(
-    todo => {
+  Todo.findByIdAndDelete(paramID).then( (todo) => {
       res.send({ todo }); //Sucesss:return object deleted to client
     },
     e => {
       res.status(400).send(); //error
     }
   );
+  // //Deprecated
+  // Todo.findByIdAndRemove(paramID).then( (todo) => {
+  //     res.send({ todo }); //Sucesss:return object deleted to client
+  //   },
+  //   e => {
+  //     res.status(400).send(); //error
+  //   }
+  // );
+
+
+});
+
+
+/************************************************************
+ * User End-points
+ */
+
+//  Patch
+app.patch ('/todos/:id',(req,res)=>{
+  const paramID  = ValidateUserId(req, res);
+  const body = {
+    'text': req.body.text,
+    'completed': req.body.completed
+  }
+  
+  if (typeof body.completed === 'boolean' && body.completed){
+    body.completedAt = new Date().getTime();
+  }else{
+    body.completed=false;
+    body.completedAt = null;
+  }
+
+  Todo.findByIdAndUpdate(id, {$set: body},{new: true })
+  .then((todo)=>{
+    if(!todo){
+      return res.status(404).send();
+    }
+    res.send(todo);
+  }).catch((e)=> {
+    res.status(400).send();
+  });
+
+});
+
+ 
+// First private route:
+app.get('/users/me', authenticate, (req,res)=>{
+  // send back authenticated-user now available on request
+    res.send(req.user);
+});
+
+//  POST /user
+app.post('/users', (req,res)=>{
+  const body = _.pick(req.body,['email','password']);
+  const user = new User(body);
+
+    // 1. Save user to DB
+  user.save().then( ()=>{
+    //2. Generate new token & Save token to for user's Document
+    return user.generateAuthToken();  //generateAuthToken - returns a promises with a token
+  })
+  .then((token)=> {
+    // 3. Send back response: a) token in response header
+      res.header('x-Auth', token).send(user);
+  })
+  .catch((err)=>res.status(400).send(err));
+
+});
+
+// POST users/login {email, password}: Dedicated route for LogIn
+app.post('/users/login', (req,res)=>{ 
+  const body = _.pick(req.body,['email','password']);
+
+  User.findByCredentials(body.email, body.password)
+    .then((user)=>{
+      // generate a new token for each login
+      return user.generateAuthToken()
+      .then((token)=>{
+        res.header('x-Auth', token).send(user)
+        //generateAuthToken - returns a promise with a token
+      });
+       
+    }).catch((e)=>{
+      res.status(400).send('Authenticatiing Failed....');
+  });
+  
 });
 
 app.listen(port, () => {

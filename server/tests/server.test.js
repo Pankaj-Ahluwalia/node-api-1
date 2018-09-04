@@ -11,60 +11,22 @@ const {ObjectId} = require('mongodb');
  
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {todos, populateTodos} = require('./seed/seed');
 
 let text = '';
-const todos = [ {
-        _id: new ObjectId('5b885cc68f18d443349b988a'),
-        text: "Test todo task in MogoDb"
-        }, {
-        _id: new ObjectId('5b8857554a56ca3cbc243ff6'),
-        text: "Another todo in MogoDb"
-    }]
 
-describe('Get/todos/id',()=>{ 
-    it('should return todo doc',(done)=>{
-        request(app)
-            .get(`/todos/${todos[0]._id.toHexString()}`)
-            .expect(200)
-            .expect((res) =>{
-                // expect(res.body.todo.text).toBe(todos[0].text);
-            },e=> done(e))
-            .end(done);
-    });
-    it('should return 404 if todo  not found',(done)=>{
-        const hexId= new ObjectId().toHexString();
-        
-        request(app)
-            .get(`/todos/${hexId}`)
-            .expect(404)
-            .end(done);
-    });
-
-    it('should return 404 for non-object ids',(done)=>{               
-        request(app)
-            .get(`/todos/123`)
-            .expect(404)
-            .end(done);
-    });
-
-
+//  seed data
+// beforeEach(populateTodos)
+ 
+describe('Get/todos/',()=>{
+it('should fetach all todos', (done)=> {
+    request(app)
+    .get('/todos')
+    .expect(200)
+    .end(done);
 });
+})
 
-
-
-// //this code removes all data in mongoDB Collection: Todo
-// beforeEach((done)=> {
-//     Todo.remove({}).then(()=>done());
-// });
-
-// beforeEach((done)=> {
-
-//     Todo.remove({})
-//     .then(()=>{
-//         return Todo.insertMany(todos);
-//     })
-//     .then(()=>done());
-// });
 
 
 // describe('Andrew Course', ()=> {
@@ -109,7 +71,7 @@ describe ('Post/toos/Pankaj', ()=>{
             .send({text})
             .expect(200)
             .expect((res)=>{
-                expect(res.body.text).toBe(text);          
+                expect(res.body.text).toBe(text); 
             })
             .end(done);
     });
@@ -133,3 +95,82 @@ describe ('Post/toos/Pankaj', ()=>{
     });
 });
 
+
+describe ('DELETE/toos/:id', ()=>{
+    // let hexId = todos[0]._id;
+    // let hexId = todos[0]._id.toHexString();
+     let hexId ="5b89d2c2468f5a2dfc4fe53c";
+
+    it('should remove a todo', (done)=>{
+        request(app)
+            .delete(`/todos/${hexId}`)                 
+            .expect(200) 
+
+            .end((err, res) =>{
+                if (err) {
+                    return done(err);
+                }
+
+                //check item in db
+                Todo.findById(hexId).then( (todo)=>{
+                    expect(todo).toNotExist();
+                    done(); //wrap up tes: SUCCESS
+                })
+                .catch( (err)=> done(err));
+            });
+
+            // .expect((res)=>{
+            //     expect(res.body._id).toBe(hexId);
+            // })
+
+    });
+
+    // it('should remove a todo', (done)=>{
+                 
+    // });
+
+    // it('should remove a todo', (done)=>{
+                 
+    // });
+
+    
+
+});
+
+
+
+
+describe('Get/todos/id',()=>{ 
+    // let  hexID = `${todos[0]._id.toHexString()}`;
+    let  hexID = '5b8dfe3bc6f0e0187861659f';
+
+     
+
+    // it('should return todo doc',(done)=>{
+    //     request(app)
+    //         .get(`/todos/${hexID}`)
+    //         .expect(200)
+    //         .expect((res) =>{
+    //             // expect(res.body.todo.text).toBe(todos[0].text);
+    //         },e=> done(e))
+    //         .end(done);
+    // });
+
+    it('should return 404 if todo  not found',(done)=>{
+        const hexId= new ObjectId().toHexString();
+        
+        request(app)
+            .get(`/todos/${hexId}`)
+            .expect(404)
+            .end(done);
+    });
+
+    it('should return 404 for non-object ids',(done)=>{               
+        request(app)
+            .get(`/todos/123`)
+            .expect(404)
+            .end(done);
+    });
+
+
+});

@@ -2,13 +2,13 @@
 var mongoose = require('mongoose');
 
 
-const dbHost = "localhost";
-const port = 27017;
-const dbName =  'TodoApp'; // 'myfirst_db';
-let url= `mongodb://${dbHost}:${port}/${dbName}`;  
+// const dbHost = "localhost";
+// const port = 27017;
+// const dbName = 'TodoApp';
+// let url= `mongodb://${dbHost}:${port}/${dbName}`;  
 
-url= process.env.MONGODB_URI || `mongodb://${dbHost}:${port}/${dbName}`;  
-
+// url= process.env.MONGODB_URI || `mongodb://${dbHost}:${port}/${dbName}`;  
+url= process.env.MONGODB_URI;  
 
 // configure mongoose:
  mongoose.Promise = global.Promise;  //use built-in Promise library
