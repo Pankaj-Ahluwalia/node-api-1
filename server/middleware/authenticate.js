@@ -1,8 +1,8 @@
+// NOTE: authenticate middeleware puts up Uer & Token onto Request object
+// by extracting same from x-Auth Headder inside Request-object
 var {User } = require('../models/user');    //get reference to User model
 
 const authenticate = (req,res, next)=>{
-    console.log('authenticate middleware --- start');
-
     // captre token from request-header
     const token = req.header('x-Auth');
   
@@ -15,14 +15,14 @@ const authenticate = (req,res, next)=>{
 
         console.log('authenticate middleware --- Promise.reject()', );
 
-        Promise.reject();
+        return Promise.reject();  //Failing to return Promises generates Error-500
       }
        
       //assign to request: user+ token
       req.user = user;  
       req.token = token;  
   
-      console.log('authenticate middleware --- ends', );
+      // console.log('authenticate middleware --- ends', user);
       next(); //invoke next
     }).catch((e)=>{
     // 401 - authentication required

@@ -41,7 +41,7 @@ UserSchema.statics.findByToken = function(token){
     const User = this;
     let decoded;
 
-    console.log('verifying token: ' , token);
+    // console.log('verifying token: ' , token);
 
     try{
         decoded = jwt.verify(token, 'myKey');
@@ -65,9 +65,9 @@ UserSchema.statics.findByToken = function(token){
     });
 }
 
-UserSchema.statics.findByCredentials = function(challangeEmail,challengePassword){
+UserSchema.statics.findByCredentials = function(email,plainPassWord){
      
-    console.log('verifying Email & password: ' , challangeEmail, ', ', challengePassword);
+    // console.log('verifying Email & password: ' , challangeEmail, ', ', challengePassword);
 
     const User = this;
   
@@ -78,19 +78,15 @@ UserSchema.statics.findByCredentials = function(challangeEmail,challengePassword
 //    let userFound={};
 
     return User.findOne({
-        'email': challangeEmail
+        'email': email
     }).then( (user)  => {
         if(!user){
             return Promise.reject();
         }
-
-        // userFound = new Object(user);
-        console.log('user found - SUCCESS!', user);
-               
-        const origHash = user.password; 
+        // REMEMBER: user.password is already hashed (Originally done while saving to DB)
         
         return new Promise ((resolve, reject)=>{
-            bcrypt.compare( challengePassword, origHash, (err, res)=>{
+            bcrypt.compare( plainPassWord, user.password, (err, res)=>{
                 if (res){
                     console.log('Success in comparing hash: ', res);   
                 }else{
@@ -108,13 +104,6 @@ UserSchema.statics.findByCredentials = function(challangeEmail,challengePassword
     });
 
 };
-
-
-
- 
-
- 
-
 
 
 
@@ -170,6 +159,18 @@ UserSchema.methods.generateAuthToken = function(){
     //save user again and return the token
     return user.save().then(()=>token);
 };
+
+UserSchema.methods.RemoveToken = function(token){
+    let user = this;
+    console.log('Removeing token: ', user);
+
+    return user.update({
+        $pull: {
+            tokens: {token: token}
+        }
+    });
+};
+
 
 // Create mongoose model: User
 const User = mongoose.model('User', UserSchema );

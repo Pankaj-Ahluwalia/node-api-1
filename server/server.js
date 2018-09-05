@@ -45,12 +45,13 @@ let ValidateUserId = (req, res) => {
 // create Endpoints: POST
 
 // Post: single Docoumnent/Record
-app.post("/todos", (req, res) => {
+app.post("/todos",authenticate, (req, res) => {
   // console.log(req.body);
 
   // capture data from request object
   const todo = new Todo({
-    text: req.body.text
+    text: req.body.text,
+    _creator: req.user._id  //set the creteror to current-user-ID
   });
 
   // save to DB:
@@ -65,7 +66,7 @@ app.post("/todos", (req, res) => {
 });
 
 // Post: Multiple Docoumnent/Record
-app.post("/todos-many", (req, res) => {
+app.post("/todos-many",authenticate, (req, res) => {
   // res.send(req.body.data);
 
   // // or, for inserting large batches of documents : https://mongoosejs.com/docs/models.html
@@ -73,6 +74,9 @@ app.post("/todos-many", (req, res) => {
 
   // capture data from request object
   const todoArr = req.body.data;
+  todoArr.array.forEach(todo => {
+    todo._creator= req.user._id ; //set the creteror to current-user-ID
+  });
 
   /* Deprecatied:
         // save to DB: this code saves data to mogoDB but is now deprecated
@@ -102,8 +106,10 @@ app.get("/", (req, res) => {
     res.status(200).send(welcomeMsg);
 });
 
-app.get("/todos", (req, res) => {
-  Todo.find().then(todos => {
+app.get("/todos", authenticate, (req, res) => {
+  Todo.find({
+    _creator:req.user._id
+  }).then(todos => {
       res.send(todos); //Sucesss:return objects fund to client
     },
     e => {
@@ -112,28 +118,35 @@ app.get("/todos", (req, res) => {
   );
 });
 
-app.get("/todos/:id", (req, res) => {
+app.get("/todos/:id",authenticate, (req, res) => {
   
   const paramID  = ValidateUserId(req, res);
 
   // // find by id
-  Todo.findById(paramID)
-    .then(todo => {
-      if (!todo) res.status(404).send("Record not found...");
+  // Todo.findById(paramID) -- replaced after addiing authentication
 
-      res.send({ todo }); //Sucesss:return object fund to client
-    })
-    .catch(e => {
-      res.status(400).send(); //error
-    });
+  Todo.findOne({
+    _id: paramID,
+    _creator: req.user._id  
+  })
+  .then(todo => {
+    if (!todo) res.status(404).send("Record not found...");
+
+    res.send({ todo }); //Sucesss:return object fund to client
+  })
+  .catch(e => {
+    res.status(400).send(); //error
+  });
 });
 
 
 // create Endpoints: DELETE/
-app.delete("/todos/:id", (req, res) => {
+app.delete("/todos/:id", authenticate, (req, res) => {
   //validate userId
   const paramID = ValidateUserId(req, res);
 
+  /*
+  // commented after adding authentication
   Todo.findByIdAndDelete(paramID).then( (todo) => {
       res.send({ todo }); //Sucesss:return object deleted to client
     },
@@ -141,6 +154,22 @@ app.delete("/todos/:id", (req, res) => {
       res.status(400).send(); //error
     }
   );
+
+*/
+
+
+  Todo.findOneAndRemove({
+    _id:paramID,
+    _creator: req.user.id
+  }).then( (todo) => {
+    res.send({ todo }); //Sucesss:return object deleted to client
+  },
+  e => {
+    res.status(400).send(); //error
+  }
+  );
+
+
   // //Deprecated
   // Todo.findByIdAndRemove(paramID).then( (todo) => {
   //     res.send({ todo }); //Sucesss:return object deleted to client
@@ -159,7 +188,7 @@ app.delete("/todos/:id", (req, res) => {
  */
 
 //  Patch
-app.patch ('/todos/:id',(req,res)=>{
+app.patch ('/todos/:id',authenticate,(req,res)=>{
   const paramID  = ValidateUserId(req, res);
   const body = {
     'text': req.body.text,
@@ -173,7 +202,13 @@ app.patch ('/todos/:id',(req,res)=>{
     body.completedAt = null;
   }
 
-  Todo.findByIdAndUpdate(id, {$set: body},{new: true })
+  // Todo.findByIdAndUpdate(id, {$set: body},{new: true })
+
+  Todo.findOneAndUpdate({
+    _id: paramID,
+    _creator: req.user._id
+  }, {$set: body},{new: true })
+  
   .then((todo)=>{
     if(!todo){
       return res.status(404).send();
@@ -183,15 +218,11 @@ app.patch ('/todos/:id',(req,res)=>{
     res.status(400).send();
   });
 
+
+
 });
 
  
-// First private route:
-app.get('/users/me', authenticate, (req,res)=>{
-  // send back authenticated-user now available on request
-    res.send(req.user);
-});
-
 //  POST /user
 app.post('/users', (req,res)=>{
   const body = _.pick(req.body,['email','password']);
@@ -208,6 +239,12 @@ app.post('/users', (req,res)=>{
   })
   .catch((err)=>res.status(400).send(err));
 
+});
+
+// First private route:
+app.get('/users/me', authenticate, (req,res)=>{
+  // send back authenticated-user now available on request
+    res.send(req.user);
 });
 
 // POST users/login {email, password}: Dedicated route for LogIn
@@ -227,6 +264,19 @@ app.post('/users/login', (req,res)=>{
       res.status(400).send('Authenticatiing Failed....');
   });
   
+});
+
+// Second private route: -- To delete  token when user logs out
+app.delete('/users/me/token', authenticate, (req,res)=>{
+// NOTE: authenticate middeleware puts up Uer & Token onto Request object
+// by extracting same from x-Auth Headder inside Request-object
+  req.user.RemoveToken(req.token).then(()=>{
+    res.status(200).send('Done');
+  }, ()=>{
+    res.status(400).send();
+  }).catch ((e)=>{
+    res.send(e);
+  });
 });
 
 app.listen(port, () => {
