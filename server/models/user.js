@@ -44,7 +44,7 @@ UserSchema.statics.findByToken = function(token){
     // console.log('verifying token: ' , token);
 
     try{
-        decoded = jwt.verify(token, 'myKey');
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
     }catch(e){
         // throw error if user is not verified
         // return new Promise( (resolve,reject)=>{
@@ -107,7 +107,7 @@ UserSchema.statics.findByCredentials = function(email,plainPassWord){
 
 
 
-
+// ******Imp****
 UserSchema.pre('save', function(next){
     // console.log('Pre save');
     const user = this;
@@ -149,7 +149,7 @@ UserSchema.methods.generateAuthToken = function(){
    
     // generate Token: (Next update user tokens array)
     // const token = jwt.sign({_id: user._id.toHexString(), access}, 'myKey').toString();
-    const token = jwt.sign({_id: user._id.toHexString(), access}, 'myKey').toString();
+    const token = jwt.sign({_id: user._id.toHexString(), access}, process.env.JWT_SECRET).toString();
   
     // user.tokens.concat([{access,token}]);
     user.tokens.push({access,token});

@@ -74,7 +74,7 @@ app.post("/todos-many",authenticate, (req, res) => {
 
   // capture data from request object
   const todoArr = req.body.data;
-  todoArr.array.forEach(todo => {
+  todoArr.forEach(todo => {
     todo._creator= req.user._id ; //set the creteror to current-user-ID
   });
 
